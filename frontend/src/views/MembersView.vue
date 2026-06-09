@@ -126,9 +126,16 @@ const form = reactive({
 })
 
 const filteredMembers = computed(() => {
+  const text = keyword.value.trim().toLowerCase()
   return members.value.filter((member) => {
     const matchesLevel = !levelFilter.value || member.level_id === levelFilter.value
-    return matchesLevel
+    const matchesKeyword =
+      !text ||
+      [member.name, member.phone, ...member.favorite_categories]
+        .join(' ')
+        .toLowerCase()
+        .includes(text)
+    return matchesLevel && matchesKeyword
   })
 })
 

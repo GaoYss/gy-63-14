@@ -1,0 +1,111 @@
+[1mdiff --git a/backend/app/modules/members/router.py b/backend/app/modules/members/router.py[m
+[1mindex 704e3ed..84772cd 100644[m
+[1m--- a/backend/app/modules/members/router.py[m
+[1m+++ b/backend/app/modules/members/router.py[m
+[36m@@ -1,4 +1,4 @@[m
+[31m-from fastapi import APIRouter[m
+[32m+[m[32mfrom fastapi import APIRouter, Query[m
+ [m
+ from app.modules.members.models import Member, MemberCreate, MemberUpdate[m
+ from app.modules.members.service import create_member, list_members, update_member[m
+[36m@@ -7,8 +7,8 @@[m [mrouter = APIRouter()[m
+ [m
+ [m
+ @router.get("", response_model=list[Member])[m
+[31m-def get_members() -> list[Member]:[m
+[31m-    return list_members()[m
+[32m+[m[32mdef get_members(keyword: str | None = Query(default=None)) -> list[Member]:[m
+[32m+[m[32m    return list_members(keyword)[m
+ [m
+ [m
+ @router.post("", response_model=Member, status_code=201)[m
+[1mdiff --git a/backend/app/modules/members/service.py b/backend/app/modules/members/service.py[m
+[1mindex c3ea792..6b81150 100644[m
+[1m--- a/backend/app/modules/members/service.py[m
+[1m+++ b/backend/app/modules/members/service.py[m
+[36m@@ -10,8 +10,17 @@[m [mdef _with_level(member: dict) -> Member:[m
+     return Member(**member, level=level)[m
+ [m
+ [m
+[31m-def list_members() -> list[Member]:[m
+[31m-    return [_with_level(member) for member in store.members.values()][m
+[32m+[m[32mdef list_members(keyword: str | None = None) -> list[Member]:[m
+[32m+[m[32m    members = list(store.members.values())[m
+[32m+[m[32m    if keyword:[m
+[32m+[m[32m        kw = keyword.lower()[m
+[32m+[m[32m        members = [[m
+[32m+[m[32m            m for m in members[m
+[32m+[m[32m            if kw in m["name"].lower()[m
+[32m+[m[32m            or kw in m["phone"].lower()[m
+[32m+[m[32m            or any(kw in cat.lower() for cat in m.get("favorite_categories", []))[m
+[32m+[m[32m        ][m
+[32m+[m[32m    return [_with_level(member) for member in members][m
+ [m
+ [m
+ def get_member(member_id: int) -> Member:[m
+[1mdiff --git a/frontend/src/api/members.js b/frontend/src/api/members.js[m
+[1mindex c5930f7..7985af6 100644[m
+[1m--- a/frontend/src/api/members.js[m
+[1m+++ b/frontend/src/api/members.js[m
+[36m@@ -1,7 +1,11 @@[m
+ import { http } from './http'[m
+ [m
+ export const memberApi = {[m
+[31m-  list: () => http.get('/members'),[m
+[32m+[m[32m  list: (keyword) => {[m
+[32m+[m[32m    const params = {}[m
+[32m+[m[32m    if (keyword) params.keyword = keyword[m
+[32m+[m[32m    return http.get('/members', { params })[m
+[32m+[m[32m  },[m
+   create: (payload) => http.post('/members', payload),[m
+   update: (id, payload) => http.patch(`/members/${id}`, payload),[m
+ }[m
+[1mdiff --git a/frontend/src/views/MembersView.vue b/frontend/src/views/MembersView.vue[m
+[1mindex 88cdfc7..f38d646 100644[m
+[1m--- a/frontend/src/views/MembersView.vue[m
+[1m+++ b/frontend/src/views/MembersView.vue[m
+[36m@@ -99,7 +99,7 @@[m
+ </template>[m
+ [m
+ <script setup>[m
+[31m-import { computed, onMounted, reactive, ref } from 'vue'[m
+[32m+[m[32mimport { computed, onMounted, reactive, ref, watch } from 'vue'[m
+ import { BadgePercent, Crown, Tags, Users } from 'lucide-vue-next'[m
+ [m
+ import { levelApi } from '../api/levels'[m
+[36m@@ -126,26 +126,26 @@[m [mconst form = reactive({[m
+ })[m
+ [m
+ const filteredMembers = computed(() => {[m
+[31m-  const text = keyword.value.trim().toLowerCase()[m
+   return members.value.filter((member) => {[m
+[31m-    const matchesText =[m
+[31m-      !text ||[m
+[31m-      [member.name, member.phone, member.level?.name, ...member.favorite_categories][m
+[31m-        .join(' ')[m
+[31m-        .toLowerCase()[m
+[31m-        .includes(text)[m
+     const matchesLevel = !levelFilter.value || member.level_id === levelFilter.value[m
+[31m-    return matchesText && matchesLevel[m
+[32m+[m[32m    return matchesLevel[m
+   })[m
+ })[m
+ [m
+[32m+[m[32mlet searchTimer = null[m
+[32m+[m[32mwatch(keyword, () => {[m
+[32m+[m[32m  clearTimeout(searchTimer)[m
+[32m+[m[32m  searchTimer = setTimeout(() => loadData(), 300)[m
+[32m+[m[32m})[m
+[32m+[m
+ const totalPoints = computed(() => members.value.reduce((sum, member) => sum + member.points, 0))[m
+ const topLevelName = computed(() => levels.value.at(-1)?.name || '-')[m
+ const favoriteCount = computed(() => new Set(members.value.flatMap((member) => member.favorite_categories)).size)[m
+ [m
+ async function loadData() {[m
+[32m+[m[32m  const text = keyword.value.trim() || undefined[m
+   const [memberList, levelList] = await Promise.all([[m
+[31m-    memberApi.list().catch(() => fallbackMembers),[m
+[32m+[m[32m    memberApi.list(text).catch(() => fallbackMembers),[m
+     levelApi.list().catch(() => fallbackLevels),[m
+   ])[m
+   members.value = keepList(memberList, members.value)[m
