@@ -25,7 +25,7 @@
     <section class="panel">
       <div class="panel-header">
         <h2>会员列表</h2>
-        <span class="count-badge">{{ filteredMembers.length }} 人</span>
+        <span class="count-badge">{{ members.length }} 人</span>
       </div>
       <table class="data-table">
         <thead>
@@ -39,7 +39,7 @@
         </thead>
         <tbody>
           <tr
-            v-for="member in filteredMembers"
+            v-for="member in members"
             :key="member.id"
             :class="{ selected: selectedMember?.id === member.id }"
             @click="selectMember(member)"
@@ -52,7 +52,7 @@
           </tr>
         </tbody>
       </table>
-      <EmptyState v-if="!filteredMembers.length" text="暂无匹配会员" />
+      <EmptyState v-if="!members.length" text="暂无匹配会员" />
     </section>
 
     <section class="panel">
@@ -125,9 +125,9 @@ const form = reactive({
   points: 0,
 })
 
-const filteredMembers = computed(() => {
+function clientFilter(list) {
   const text = keyword.value.trim().toLowerCase()
-  return members.value.filter((member) => {
+  return list.filter((member) => {
     const matchesLevel = !levelFilter.value || member.level_id === levelFilter.value
     const matchesKeyword =
       !text ||
@@ -137,22 +137,28 @@ const filteredMembers = computed(() => {
         .includes(text)
     return matchesLevel && matchesKeyword
   })
-})
+}
 
 let searchTimer = null
 watch(keyword, () => {
   clearTimeout(searchTimer)
   searchTimer = setTimeout(() => loadData(), 300)
 })
+watch(levelFilter, () => loadData())
 
 const totalPoints = computed(() => members.value.reduce((sum, member) => sum + member.points, 0))
-const topLevelName = computed(() => levels.value.at(-1)?.name || '-')
+const topLevelName = computed(() => {
+  const memberLevelIds = [...new Set(members.value.map((m) => m.level_id))]
+  const matched = levels.value.filter((l) => memberLevelIds.includes(l.id))
+  return matched.at(-1)?.name || '-'
+})
 const favoriteCount = computed(() => new Set(members.value.flatMap((member) => member.favorite_categories)).size)
 
 async function loadData() {
   const text = keyword.value.trim() || undefined
+  const lid = levelFilter.value || undefined
   const [memberList, levelList] = await Promise.all([
-    memberApi.list(text).catch(() => fallbackMembers),
+    memberApi.list(text, lid).catch(() => clientFilter(fallbackMembers)),
     levelApi.list().catch(() => fallbackLevels),
   ])
   members.value = keepList(memberList, members.value)

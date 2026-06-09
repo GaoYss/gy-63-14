@@ -7,8 +7,11 @@ router = APIRouter()
 
 
 @router.get("", response_model=list[Member])
-def get_members(keyword: str | None = Query(default=None)) -> list[Member]:
-    return list_members(keyword)
+def get_members(
+    keyword: str | None = Query(default=None),
+    level_id: int | None = Query(default=None, gt=0),
+) -> list[Member]:
+    return list_members(keyword, level_id)
 
 
 @router.post("", response_model=Member, status_code=201)
