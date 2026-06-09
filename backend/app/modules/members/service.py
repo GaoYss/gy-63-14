@@ -10,8 +10,17 @@ def _with_level(member: dict) -> Member:
     return Member(**member, level=level)
 
 
-def list_members() -> list[Member]:
-    return [_with_level(member) for member in store.members.values()]
+def list_members(keyword: str | None = None) -> list[Member]:
+    members = list(store.members.values())
+    if keyword:
+        kw = keyword.lower()
+        members = [
+            m for m in members
+            if kw in m["name"].lower()
+            or kw in m["phone"].lower()
+            or any(kw in cat.lower() for cat in m.get("favorite_categories", []))
+        ]
+    return [_with_level(member) for member in members]
 
 
 def get_member(member_id: int) -> Member:

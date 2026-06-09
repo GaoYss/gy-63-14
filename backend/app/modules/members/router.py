@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 
 from app.modules.members.models import Member, MemberCreate, MemberUpdate
 from app.modules.members.service import create_member, list_members, update_member
@@ -7,8 +7,8 @@ router = APIRouter()
 
 
 @router.get("", response_model=list[Member])
-def get_members() -> list[Member]:
-    return list_members()
+def get_members(keyword: str | None = Query(default=None)) -> list[Member]:
+    return list_members(keyword)
 
 
 @router.post("", response_model=Member, status_code=201)

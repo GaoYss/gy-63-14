@@ -99,7 +99,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { BadgePercent, Crown, Tags, Users } from 'lucide-vue-next'
 
 import { levelApi } from '../api/levels'
@@ -126,17 +126,16 @@ const form = reactive({
 })
 
 const filteredMembers = computed(() => {
-  const text = keyword.value.trim().toLowerCase()
   return members.value.filter((member) => {
-    const matchesText =
-      !text ||
-      [member.name, member.phone, member.level?.name, ...member.favorite_categories]
-        .join(' ')
-        .toLowerCase()
-        .includes(text)
     const matchesLevel = !levelFilter.value || member.level_id === levelFilter.value
-    return matchesText && matchesLevel
+    return matchesLevel
   })
+})
+
+let searchTimer = null
+watch(keyword, () => {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => loadData(), 300)
 })
 
 const totalPoints = computed(() => members.value.reduce((sum, member) => sum + member.points, 0))
@@ -144,8 +143,9 @@ const topLevelName = computed(() => levels.value.at(-1)?.name || '-')
 const favoriteCount = computed(() => new Set(members.value.flatMap((member) => member.favorite_categories)).size)
 
 async function loadData() {
+  const text = keyword.value.trim() || undefined
   const [memberList, levelList] = await Promise.all([
-    memberApi.list().catch(() => fallbackMembers),
+    memberApi.list(text).catch(() => fallbackMembers),
     levelApi.list().catch(() => fallbackLevels),
   ])
   members.value = keepList(memberList, members.value)
