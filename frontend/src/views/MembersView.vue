@@ -108,7 +108,6 @@ import { fallbackLevels, fallbackMembers } from '../api/fallback'
 import EmptyState from '../components/EmptyState.vue'
 import MessageBanner from '../components/MessageBanner.vue'
 import StatCard from '../components/StatCard.vue'
-import { keepList } from '../utils/dataState'
 
 const members = ref([...fallbackMembers])
 const levels = ref([...fallbackLevels])
@@ -161,8 +160,8 @@ async function loadData() {
     memberApi.list(text, lid).catch(() => clientFilter(fallbackMembers)),
     levelApi.list().catch(() => fallbackLevels),
   ])
-  members.value = keepList(memberList, members.value)
-  levels.value = keepList(levelList, levels.value)
+  members.value = memberList
+  levels.value = levelList.length ? levelList : levels.value
   form.level_id = levelList[0]?.id || 1
 }
 
@@ -177,6 +176,8 @@ async function submit() {
     })
     Object.assign(form, { name: '', phone: '', points: 0, level_id: levels.value[0]?.id || 1 })
     favoriteText.value = ''
+    keyword.value = ''
+    levelFilter.value = 0
     message.value = '会员已保存'
     messageType.value = 'success'
     await loadData()

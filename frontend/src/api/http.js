@@ -23,6 +23,14 @@ function fallbackFor(path) {
   return fallbackGetters.find((entry) => entry.test(path))?.data()
 }
 
+function buildQuery(params) {
+  if (!params) return ''
+  const pairs = Object.entries(params)
+    .filter(([, v]) => v !== undefined && v !== null && v !== '')
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+  return pairs.length ? `?${pairs.join('&')}` : ''
+}
+
 async function request(path, options = {}) {
   const method = options.method || 'GET'
   const attempts = method === 'GET' ? 2 : 1
@@ -72,7 +80,7 @@ async function requestOnce(path, options = {}) {
 }
 
 export const http = {
-  get: (path) => request(path),
+  get: (path, options = {}) => request(path + buildQuery(options.params)),
   post: (path, body) => request(path, { method: 'POST', body: JSON.stringify(body) }),
   patch: (path, body) => request(path, { method: 'PATCH', body: JSON.stringify(body) }),
 }
